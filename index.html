@@ -211,7 +211,7 @@
  * camera 6 deg above); label 2.273 tall from 0.244 (seam ~4.6 deg, Nuriv (26).jpg).
  * Every nuriv product uses this jar (user, 2026-10-08): only the label changes (setLabel), and
  * 30-capsule products show the lowest 30 of the 60 capsules (setCapsules).
- * Glass: dark tea amber, one wall = AMBER (opts.amber). Cap: opaque glossy black with the engraved
+ * Glass: dark amber, one wall = AMBER (opts.amber). Cap: opaque glossy black with the engraved
  * emblem from engine/cap_emblem.js (load it before this file; without it the cap shows only the ring).
  * Label texture + foil map: tools/make_label_wrap.py (u = 0.5 is the front centre); products in labels/.
  */
@@ -438,10 +438,10 @@
     // mouth only shows once the cap is off (setCap)
     const LIP = GLASS.findIndex(([r, y]) => r === 0.60 && y === 3.48);
     const glassGeo = lathe(GLASS.slice(0, LIP + 1), 160), mouthGeo = lathe(GLASS.slice(LIP), 160);
-    // amber ("tea") glass: AMBER is what one wall lets through (linear R/G/B), about 34/10/3 %: dark
-    // tea like the real jar (user: "เข้มใกล้เคียงเดิม" after a lighter 55/22/6 % try), still
-    // see-through against a bright background, with the capsules showing tinted
-    const AMBER = new THREE.Color(opts.amber ?? 0x9e5c33);
+    // amber glass: AMBER is what one wall lets through (linear R/G/B), about 30/9/3 %, so two walls read
+    // near-black red-brown like Nuriv (10).jpg and glow amber only against bright light. The user tried
+    // lighter tea (55/22/6, then 34/10/3 %) on 2026-10-08 and went back to this: "เข้มเหมือนเดิม"
+    const AMBER = new THREE.Color(opts.amber ?? 0x955430);
     const glassMat = see ? new THREE.MeshPhysicalMaterial({
       color: 0xffffff, metalness: 0, roughness: 0.02, transmission: 1, ior: 1.5, specularIntensity: 1,
       side: THREE.DoubleSide,
@@ -452,17 +452,17 @@
       // transparent PNG: transmission can't see the page behind a transparent canvas, so each wall is an
       // alpha layer instead (amber body colour, ~half coverage, more at grazing angles where the path
       // through the glass is longer); highlights add coverage so they stay bright over anything
-      color: opts.glassBody ?? 0x4a2208, metalness: 0, roughness: 0.04, specularIntensity: 1,
-      transparent: true, opacity: opts.glassCover ?? 0.62, depthWrite: false, side: THREE.FrontSide,
+      color: opts.glassBody ?? 0x2e1406, metalness: 0, roughness: 0.04, specularIntensity: 1,
+      transparent: true, opacity: opts.glassCover ?? 0.78, depthWrite: false, side: THREE.FrontSide,
     });
     // the far wall's inside mirrors the softboxes as sharp orange bars; real jars show only a faint
     // ghost of them. three draws those back faces in the transmission pass as side = BackSide
     // (FLIP_SIDED, where gl_FrontFacing reads true), so that's the switch to dim them on
-    // see-through only: the far wall also glows a little warm amber (studio light scattered through
-    // the back of the jar), so on a dark stage the bottle still reads as amber glass, not black
-    const g = opts.glow ?? 0.35, glow = `vec3(${(0.12 * g).toFixed(4)}, ${(0.05 * g).toFixed(4)}, ${(0.012 * g).toFixed(4)})`;
+    // see-through only, off by default: opts.glow makes the far wall glow a little warm amber (studio
+    // light scattered through the back of the jar), for a lighter look on a dark stage
+    const g = opts.glow ?? 0, glow = `vec3(${(0.12 * g).toFixed(4)}, ${(0.05 * g).toFixed(4)}, ${(0.012 * g).toFixed(4)})`;
     const dimBack = '#include <lights_fragment_end>\n#ifdef FLIP_SIDED\n  reflectedLight.directSpecular *= 0.2;\n  reflectedLight.indirectSpecular *= 0.2;\n'
-      + (see ? `  totalEmissiveRadiance += ${glow};\n` : '') + '#endif';
+      + (see && g > 0 ? `  totalEmissiveRadiance += ${glow};\n` : '') + '#endif';
     const alphaGlass = `
       {
         float fres = pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), 2.0);
